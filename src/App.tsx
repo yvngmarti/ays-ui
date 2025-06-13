@@ -1,92 +1,26 @@
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Asegúrate de importar useEffect
 import { Table, type TableColumn } from "./components/table/Table";
 import { Modal } from "./components/modal/Modal";
 import { Sidebar, type MenuItem } from "./components/sidebar/Sidebar";
 
-export default function Home() {
-  // Estado para los datos de la tabla
-  const [tableData, setTableData] = useState([
-    {
-      id: "1",
-      room: "4810",
-      huesped: "MARTIN",
-      fecha_estancia: "6 abril - 10 de abril",
-      hora_creacion: "16:45:00",
-      hora_inicio: "16:50:00",
-      hora_finalizacion: "17:00:00",
-      duracion: "00:10:00",
-      departamento: "ESTILISTA",
-      requerimiento: "BATA DE ADULTO",
-      tipo: "E",
-      solicitado: "MARTINfsffdfs",
-      asignado_a: "MARTIN",
-      notas_huesped: "HPD SOLICITA BATA DE BAÑO",
-      comentario_atencion: "DIANA REALIZA ENTREGA DE PLANCHA",
-      callback: "HPD NO CONTESTA LLAMADA",
-      realizo_llamada: "MARTIN",
-    },
-    {
-      id: "2", // Añadido id
-      room: "4810",
-      huesped: "MARTIN",
-      fecha_estancia: "6 abril - 10 de abril",
-      // ... (resto de datos para el segundo objeto)
-      hora_creacion: "16:45:00",
-      hora_inicio: "16:50:00",
-      hora_finalizacion: "17:00:00",
-      duracion: "00:10:00",
-      departamento: "ESTILISTA",
-      requerimiento: "BATA DE ADULTO",
-      tipo: "E",
-      solicitado: "MARTINfsffdfs",
-      asignado_a: "MARTIN",
-      notas_huesped: "HPD SOLICITA BATA DE BAÑO",
-      comentario_atencion: "DIANA REALIZA ENTREGA DE PLANCHA",
-      callback: "HPD NO CONTESTA LLAMADA",
-      realizo_llamada: "MARTIN",
-    },
-    // Añade IDs únicos a todos los objetos de tableData si vas a usar editar/eliminar
-    {
-      id: "3",
-      room: "4810",
-      huesped: "MARTIN",
-      fecha_estancia: "6 abril - 10 de abril",
-      hora_creacion: "16:45:00",
-      hora_inicio: "16:50:00",
-      hora_finalizacion: "17:00:00",
-      duracion: "00:10:00",
-      departamento: "ESTILISTA",
-      requerimiento: "BATA DE ADULTO",
-      tipo: "E",
-      solicitado: "MARTINfsffdfs",
-      asignado_a: "MARTIN",
-      notas_huesped: "HPD SOLICITA BATA DE BAÑO",
-      comentario_atencion: "DIANA REALIZA ENTREGA DE PLANCHA",
-      callback: "HPD NO CONTESTA LLAMADA",
-      realizo_llamada: "MARTIN",
-    },
-    {
-      id: "4",
-      room: "4810",
-      huesped: "MARTIN",
-      fecha_estancia: "6 abril - 10 de abril",
-      hora_creacion: "16:45:00",
-      hora_inicio: "16:50:00",
-      hora_finalizacion: "17:00:00",
-      duracion: "00:10:00",
-      departamento: "ESTILISTA",
-      requerimiento: "BATA DE ADULTO",
-      tipo: "E",
-      solicitado: "MARTINfsffdfs",
-      asignado_a: "MARTIN",
-      notas_huesped: "HPD SOLICITA BATA DE BAÑO",
-      comentario_atencion: "DIANA REALIZA ENTREGA DE PLANCHA",
-      callback: "HPD NO CONTESTA LLAMADA",
-      realizo_llamada: "MARTIN",
-    },
-  ]);
+const formatDuration = (totalSeconds: number | undefined | null): string => {
+  if (typeof totalSeconds !== "number" || totalSeconds < 0) {
+    return "00:00:00";
+  }
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
 
-  // Estado para el modal
+  const pad = (num: number) => String(num).padStart(2, "0");
+
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+};
+
+export default function Home() {
+  const [tableData, setTableData] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [modal, setModal] = useState<{
     isOpen: boolean;
     type: string;
@@ -100,21 +34,79 @@ export default function Home() {
   });
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [activeModule, setActiveModule] = useState("general");
 
-  const [activeModule, setActiveModule] = useState("empleados");
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(
+          "http://192.168.100.40:3000/api/v1/service-request",
+          {
+            method: "GET",
+            headers: {
+              accept: "application/json",
+            },
+          }
+        );
 
-  // Definición de columnas
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result && result.data && Array.isArray(result.data)) {
+          // Mapear los datos de la API a la estructura que espera la tabla
+          const formattedData = result.data.map((item: any) => ({
+            id: item.id,
+            room: item.roomNumber,
+            huesped: item.guestName,
+            fecha_estancia: `${item.checkInDate} - ${item.checkOutDate}`,
+            hora_creacion: item.creationTime,
+            hora_inicio: item.startTime,
+            hora_finalizacion: item.completionTime,
+            duracion: formatDuration(item.duration),
+            departamento: item.department ? item.department.name : "-",
+            requerimiento: item.requirement ? item.requirement.name : "-",
+            tipo: item.requirementType ? item.requirementType.code : "-",
+            solicitado: item.requestedByEmployeeName,
+            asignado_a: item.assignedToEmployeeName,
+            notas_huesped: item.guestNotes,
+            comentario_atencion: item.serviceComments,
+            callback: item.callbackNotes,
+            realizo_llamada: item.callbackPerformedByEmployeeName,
+          }));
+          setTableData(formattedData);
+        } else {
+          setTableData([]);
+          console.warn(
+            "API response structure might be different than expected or data is empty.",
+            result
+          );
+        }
+      } catch (err) {
+        console.error("Failed to fetch service requests:", err);
+        setError(err instanceof Error ? err.message : String(err));
+        setTableData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   const columns: TableColumn[] = [
     { key: "room", title: "ROOM", width: "10%", sortable: true },
     { key: "huesped", title: "Huesped", width: "30%", sortable: true },
     {
       key: "fecha_estancia",
       title: "Fecha de Estancia",
-      width: "50%", // Este ancho es para la celda completa que contendrá ambas fechas
-      sortable: true, // Ordenará por el string completo "checkIn - checkOut"
+      width: "50%",
+      sortable: true,
       render: (value: any, record: any) => {
-        // value es record.fecha_estancia
-        // Asegurarse que value es un string y no está vacío
         if (typeof value !== "string" || !value) {
           return (
             <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -125,11 +117,9 @@ export default function Home() {
         }
 
         const parts = value.split(" - ");
-        const checkIn = parts[0]?.trim() ?? ""; // Fecha de check-in
-        const checkOut = parts[1]?.trim() ?? ""; // Fecha de check-out
+        const checkIn = parts[0]?.trim() ?? "";
+        const checkOut = parts[1]?.trim() ?? "";
 
-        // Usamos un div con flexbox para mostrar las dos fechas separadas
-        // dentro de la misma celda de la tabla.
         return (
           <div
             style={{
@@ -138,9 +128,7 @@ export default function Home() {
               width: "100%",
             }}
           >
-            {/* Div para la fecha de check-in */}
             <div style={{ textAlign: "left" }}>{checkIn}</div>
-            {/* Div para la fecha de check-out */}
             <div style={{ textAlign: "left" }}>{checkOut}</div>
           </div>
         );
@@ -182,14 +170,11 @@ export default function Home() {
       title: "Tipo",
       width: "25%",
       sortable: true,
-      render: (
-        value: any,
-        record: any // Explicit 'any' or specific type
-      ) => (
+      render: (value: any, record: any) => (
         <span
           className="role-badge"
           style={{
-            backgroundColor: getRolColor(value as string), // Assert value as string if sure
+            backgroundColor: getRolColor(value as string),
             padding: "4px 8px",
             borderRadius: "4px",
             color: "white",
@@ -213,7 +198,7 @@ export default function Home() {
       title: "Comentario Atención",
       width: "20%",
       sortable: true,
-    }, // Eliminada la columna duplicada de aquí
+    },
     { key: "callback", title: "Callback", width: "20%", sortable: true },
     {
       key: "realizo_llamada",
@@ -223,67 +208,313 @@ export default function Home() {
     },
   ];
 
-  // Elementos del menú para el drawer
   const menuItems: MenuItem[] = [
     {
-      id: "dashboard",
-      label: "Dashboard",
-      icon: "📊",
-      onClick: () => setActiveModule("dashboard"),
-    },
-    {
-      id: "empleados",
-      label: "Empleados",
-      icon: "👥",
-      onClick: () => setActiveModule("empleados"),
-    },
-    {
-      id: "proyectos",
-      label: "Proyectos",
-      icon: "📁",
-      onClick: () => setActiveModule("proyectos"),
-    },
-    {
-      id: "configuracion",
-      label: "Configuración",
-      icon: "⚙️",
+      id: "general",
+      label: "General",
+      icon: "🌎",
       children: [
         {
-          id: "perfil",
-          label: "Perfil de Usuario",
-          icon: "👤",
-          onClick: () => setActiveModule("perfil"),
+          id: "ays",
+          label: "At Your Service",
+          icon: "📋",
+          onClick: () => setActiveModule("ays"),
         },
         {
-          id: "seguridad",
-          label: "Seguridad",
-          icon: "🔒",
-          onClick: () => setActiveModule("seguridad"),
+          id: "graficoAys",
+          label: "Gráfico",
+          icon: "📊",
+          onClick: () => setActiveModule("graficoAys"),
         },
       ],
     },
     {
-      id: "reportes",
-      label: "Reportes",
-      icon: "📈",
+      id: "aLl",
+      label: "Ama de Llaves",
+      icon: "🧴",
       children: [
         {
-          id: "mensual",
-          label: "Reporte Mensual",
-          icon: "📅",
-          onClick: () => setActiveModule("reporte-mensual"),
+          id: "tablaALl",
+          label: "Tabla",
+          icon: "📋",
+          onClick: () => setActiveModule("tablaALl"),
         },
         {
-          id: "anual",
-          label: "Reporte Anual",
-          icon: "📆",
-          onClick: () => setActiveModule("reporte-anual"),
+          id: "graficoALl",
+          label: "Gráfico",
+          icon: "📊",
+          onClick: () => setActiveModule("graficoALl"),
         },
       ],
     },
+    {
+      id: "bB",
+      label: "Bell Boys",
+      icon: "🛗",
+      children: [
+        {
+          id: "tablaBB",
+          label: "Tabla",
+          icon: "📋",
+          onClick: () => setActiveModule("tablaBB"),
+        },
+        {
+          id: "graficoBB",
+          label: "Gráfico",
+          icon: "📊",
+          onClick: () => setActiveModule("graficoBB"),
+        },
+      ],
+    },
+    {
+      id: "Doc",
+      label: "Doctor",
+      icon: "👨‍⚕️",
+      children: [
+        {
+          id: "tablaD",
+          label: "Tabla",
+          icon: "📋",
+          onClick: () => setActiveModule("tablaD"),
+        },
+        {
+          id: "graficoD",
+          label: "Gráfico",
+          icon: "📊",
+          onClick: () => setActiveModule("graficoD"),
+        },
+      ],
+    },
+    {
+      id: "HB",
+      label: "HB",
+      icon: "❔",
+      children: [
+        {
+          id: "tablaHB",
+          label: "Tabla",
+          icon: "📋",
+          onClick: () => setActiveModule("tablaHB"),
+        },
+        {
+          id: "graficoHB",
+          label: "Gráfico",
+          icon: "📊",
+          onClick: () => setActiveModule("graficoHB"),
+        },
+      ],
+    },
+    {
+      id: "Lav",
+      label: "Lavandería",
+      icon: "👚",
+      children: [
+        {
+          id: "tablaLav",
+          label: "Tabla",
+          icon: "📋",
+          onClick: () => setActiveModule("tablaLav"),
+        },
+        {
+          id: "graficoLav",
+          label: "Gráfico",
+          icon: "📊",
+          onClick: () => setActiveModule("graficoLav"),
+        },
+      ],
+    },
+    {
+      id: "Mantto",
+      label: "Mantenimiento",
+      icon: "👨‍🏭",
+      children: [
+        {
+          id: "tablaMantto",
+          label: "Tabla",
+          icon: "📋",
+          onClick: () => setActiveModule("tablaMantto"),
+        },
+        {
+          id: "graficoMantto",
+          label: "Gráfico",
+          icon: "📊",
+          onClick: () => setActiveModule("graficoMantto"),
+        },
+      ],
+    },
+    {
+      id: "MY",
+      label: "Mayordomía",
+      icon: "🤵",
+      children: [
+        {
+          id: "tablaMY",
+          label: "Tabla",
+          icon: "📋",
+          onClick: () => setActiveModule("tablaMY"),
+        },
+        {
+          id: "graficoMY",
+          label: "Gráfico",
+          icon: "📊",
+          onClick: () => setActiveModule("graficoMY"),
+        },
+      ],
+    },
+    {
+      id: "PV",
+      label: "Prevención",
+      icon: "🦺",
+      children: [
+        {
+          id: "tablaPV",
+          label: "Tabla",
+          icon: "📋",
+          onClick: () => setActiveModule("tablaPV"),
+        },
+        {
+          id: "graficoPV",
+          label: "Gráfico",
+          icon: "📊",
+          onClick: () => setActiveModule("graficoPV"),
+        },
+      ],
+    },
+    {
+      id: "QJ",
+      label: "Quejas",
+      icon: "📌",
+      children: [
+        {
+          id: "tablaQJ",
+          label: "Tabla",
+          icon: "📋",
+          onClick: () => setActiveModule("tablaQJ"),
+        },
+        {
+          id: "graficoQJ",
+          label: "Gráfico",
+          icon: "📊",
+          onClick: () => setActiveModule("graficoQJ"),
+        },
+      ],
+    },
+    {
+      id: "IT",
+      label: "Sistemas",
+      icon: "🖥️",
+      children: [
+        {
+          id: "tablaIT",
+          label: "Tabla",
+          icon: "📋",
+          onClick: () => setActiveModule("tablaIT"),
+        },
+        {
+          id: "graficoIT",
+          label: "Gráfico",
+          icon: "📊",
+          onClick: () => setActiveModule("graficoIT"),
+        },
+      ],
+    },
+    {
+      id: "SS",
+      label: "SS",
+      icon: "❔",
+      children: [
+        {
+          id: "tablaSS",
+          label: "Tabla",
+          icon: "📋",
+          onClick: () => setActiveModule("tablaSS"),
+        },
+        {
+          id: "graficoSS",
+          label: "Gráfico",
+          icon: "📊",
+          onClick: () => setActiveModule("graficoSS"),
+        },
+      ],
+    },
+    {
+      id: "Tel",
+      label: "Teléfonos",
+      icon: "☎️",
+      children: [
+        {
+          id: "tablaTel",
+          label: "Tabla",
+          icon: "📋",
+          onClick: () => setActiveModule("tablaTel"),
+        },
+        {
+          id: "graficoTel",
+          label: "Gráfico",
+          icon: "📊",
+          onClick: () => setActiveModule("graficoTel"),
+        },
+      ],
+    },
+    // {
+    //   id: "dashboard",
+    //   label: "Dashboard",
+    //   icon: "📊",
+    //   onClick: () => setActiveModule("dashboard"),
+    // },
+    // {
+    //   id: "general",
+    //   label: "General",
+    //   icon: "🌎",
+    //   onClick: () => setActiveModule("general"),
+    // },
+    // {
+    //   id: "proyectos",
+    //   label: "Proyectos",
+    //   icon: "📁",
+    //   onClick: () => setActiveModule("proyectos"),
+    // },
+    // {
+    //   id: "configuracion",
+    //   label: "Configuración",
+    //   icon: "⚙️",
+    //   children: [
+    //     {
+    //       id: "perfil",
+    //       label: "Perfil de Usuario",
+    //       icon: "👤",
+    //       onClick: () => setActiveModule("perfil"),
+    //     },
+    //     {
+    //       id: "seguridad",
+    //       label: "Seguridad",
+    //       icon: "🔒",
+    //       onClick: () => setActiveModule("seguridad"),
+    //     },
+    //   ],
+    // },
+    // {
+    //   id: "reportes",
+    //   label: "Reportes",
+    //   icon: "📈",
+    //   children: [
+    //     {
+    //       id: "mensual",
+    //       label: "Reporte Mensual",
+    //       icon: "📅",
+    //       onClick: () => setActiveModule("reporte-mensual"),
+    //     },
+    //     {
+    //       id: "anual",
+    //       label: "Reporte Anual",
+    //       icon: "📆",
+    //       onClick: () => setActiveModule("reporte-anual"),
+    //     },
+    //   ],
+    // },
   ];
 
-  // Función para obtener color según rol
+  // Función para obtener color según el tipo de requerimiento
   const getRolColor = (tipo: string) => {
     switch (tipo) {
       case "E":
@@ -325,12 +556,11 @@ export default function Home() {
   const confirmEdit = () => {
     if (modal.record && modal.newData) {
       setTableData(
-        tableData.map(
-          (
-            item: any // Explicitly type item if possible
-          ) =>
-            item.id === modal.record.id ? { ...item, ...modal.newData } : item // Spread item for safety
-        )
+        tableData.length > 0
+          ? tableData.map((item: any) =>
+              item.id === modal.record.id ? { ...item, ...modal.newData } : item
+            )
+          : []
       );
     }
     setModal({ isOpen: false, type: "", record: null, newData: null });
@@ -341,7 +571,7 @@ export default function Home() {
     if (modal.record) {
       setTableData(
         tableData.filter((item: any) => item.id !== modal.record.id)
-      ); // Explicitly type item
+      );
     }
     setModal({ isOpen: false, type: "", record: null, newData: null });
   };
@@ -356,22 +586,20 @@ export default function Home() {
     setIsSidebarOpen(isOpen);
   };
 
-  // Renderizar el contenido según el módulo activo
   const renderContent = () => {
+    // Manejo de estados de carga y error
+    if (loading) {
+      return <p className="text-center py-10">Cargando datos...</p>;
+    }
+    if (error) {
+      return (
+        <p className="text-center py-10 text-red-500">
+          Error al cargar datos: {error}
+        </p>
+      );
+    }
+
     switch (activeModule) {
-      case "empleados":
-        return (
-          <>
-            <h2 className="text-xl font-semibold mb-4">Gestión de Empleados</h2>
-            <Table
-              columns={columns}
-              data={tableData}
-              hoverable
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-            />
-          </>
-        );
       case "dashboard":
         return (
           <>
@@ -384,50 +612,76 @@ export default function Home() {
             </div>
           </>
         );
-      case "proyectos":
-        return (
-          <>
-            <h2 className="text-xl font-semibold mb-4">Gestión de Proyectos</h2>
-            <div className="bg-gray-100 p-6 rounded-lg">
-              <p>Aquí iría la lista de proyectos y su gestión.</p>
-            </div>
-          </>
-        );
-      case "perfil":
-        return (
-          <>
-            <h2 className="text-xl font-semibold mb-4">Perfil de Usuario</h2>
-            <div className="bg-gray-100 p-6 rounded-lg">
-              <p>Configuración del perfil de usuario.</p>
-            </div>
-          </>
-        );
-      case "seguridad":
+      case "ays": // Cambiado para reflejar el uso de 'ays' o 'general'
+      case "general":
         return (
           <>
             <h2 className="text-xl font-semibold mb-4">
-              Configuración de Seguridad
+              At Your Service / General
             </h2>
-            <div className="bg-gray-100 p-6 rounded-lg">
-              <p>Ajustes de seguridad y permisos.</p>
-            </div>
+            {tableData.length > 0 ? (
+              <Table
+                columns={columns}
+                data={tableData}
+                hoverable
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+            ) : (
+              <p className="text-center py-10">No hay datos disponibles.</p>
+            )}
           </>
         );
-      case "reporte-mensual":
-      case "reporte-anual":
-        return (
-          <>
-            <h2 className="text-xl font-semibold mb-4">
-              {activeModule === "reporte-mensual"
-                ? "Reporte Mensual"
-                : "Reporte Anual"}
-            </h2>
-            <div className="bg-gray-100 p-6 rounded-lg">
-              <p>Visualización de reportes y estadísticas.</p>
-            </div>
-          </>
-        );
+      // ... (resto de tus cases de renderContent)
       default:
+        // Si el activeModule es para una tabla, puedes generalizarlo
+        // o mostrar la tabla "general" por defecto si es lo que deseas.
+        // Aquí asumimos que si no es un caso especial, es una tabla.
+        // Podrías tener un filtro en `fetchData` basado en `activeModule` si cada uno tiene su propio endpoint o filtro.
+        if (
+          activeModule.startsWith("tabla") ||
+          [
+            "ays",
+            "tablaALl",
+            "tablaBB",
+            "tablaD",
+            "tablaHB",
+            "tablaLav",
+            "tablaMantto",
+            "tablaMY",
+            "tablaPV",
+            "tablaQJ",
+            "tablaIT",
+            "tablaSS",
+            "tablaTel",
+          ].includes(activeModule)
+        ) {
+          // Por ahora, todas las tablas muestran los mismos datos generales
+          // En una implementación real, aquí filtrarías `tableData` o harías una nueva llamada a API
+          // según `activeModule` si los datos fueran diferentes.
+          const moduleName =
+            menuItems
+              .flatMap((m) => m.children || m)
+              .find((sub) => sub.id === activeModule)?.label || activeModule;
+          return (
+            <>
+              <h2 className="text-xl font-semibold mb-4">{moduleName}</h2>
+              {tableData.length > 0 ? (
+                <Table
+                  columns={columns}
+                  data={tableData} // Idealmente, filtrarías o tendrías datos específicos aquí
+                  hoverable
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
+              ) : (
+                <p className="text-center py-10">
+                  No hay datos disponibles para {moduleName}.
+                </p>
+              )}
+            </>
+          );
+        }
         return <p>Selecciona un módulo del menú</p>;
     }
   };
@@ -443,11 +697,9 @@ export default function Home() {
 
       <main className={`main-content ${isSidebarOpen ? "" : "sidebar-closed"}`}>
         <h1 className="text-2xl font-bold mb-6">Sistema de Administración</h1>
-
         <div className="content-container">{renderContent()}</div>
       </main>
 
-      {/* Modal de confirmación */}
       <Modal
         isOpen={modal.isOpen}
         onClose={closeModal}

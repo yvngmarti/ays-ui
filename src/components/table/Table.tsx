@@ -212,7 +212,15 @@ export const Table: React.FC<TableProps> = ({
               </th>
             ))}
             {(onEdit || onDelete) && (
-              <th style={{ width: "120px" }}>Acciones</th>
+              <th
+                style={{
+                  width: "120px",
+                  cursor: "default",
+                  userSelect: "none",
+                }}
+              >
+                Acciones
+              </th>
             )}
           </tr>
         </thead>
