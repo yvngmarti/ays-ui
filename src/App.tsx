@@ -1,13 +1,13 @@
-import { useState, useEffect } from "react";
-import { Table, type TableColumn } from "./components/table/Table"; // Asegúrate que TableColumn permita render
+import { useState } from "react";
+import { Table, type TableColumn } from "./components/table/Table";
 import { Modal } from "./components/modal/Modal";
-import { Drawer, type MenuItem } from "./components/drawer/Drawer";
+import { Sidebar, type MenuItem } from "./components/sidebar/Sidebar";
 
 export default function Home() {
   // Estado para los datos de la tabla
   const [tableData, setTableData] = useState([
     {
-      id: "1", // Añadido id para que funcione la edición/eliminación
+      id: "1",
       room: "4810",
       huesped: "MARTIN",
       fecha_estancia: "6 abril - 10 de abril",
@@ -90,7 +90,7 @@ export default function Home() {
   const [modal, setModal] = useState<{
     isOpen: boolean;
     type: string;
-    record: any | null; // Asegúrate que 'any' coincida con la estructura de tus datos
+    record: any | null;
     newData: any | null;
   }>({
     isOpen: false,
@@ -99,35 +99,9 @@ export default function Home() {
     newData: null,
   });
 
-  // Estado para el drawer
-  const [isDrawerOpen, setIsDrawerOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  // Estado para el módulo activo
   const [activeModule, setActiveModule] = useState("empleados");
-
-  // Efecto para detectar cambios en el drawer
-  useEffect(() => {
-    const handleDrawerChange = () => {
-      const drawerElement = document.querySelector(".drawer");
-      if (drawerElement) {
-        setIsDrawerOpen(drawerElement.classList.contains("open"));
-      }
-    };
-
-    const observer = new MutationObserver(handleDrawerChange);
-    const drawerElement = document.querySelector(".drawer");
-
-    if (drawerElement) {
-      observer.observe(drawerElement, {
-        attributes: true,
-        attributeFilter: ["class"],
-      });
-    }
-
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
 
   // Definición de columnas
   const columns: TableColumn[] = [
@@ -377,6 +351,11 @@ export default function Home() {
     setModal({ isOpen: false, type: "", record: null, newData: null });
   };
 
+  // Función para manejar el toggle del sidebar
+  const handleSidebarToggle = (isOpen: boolean) => {
+    setIsSidebarOpen(isOpen);
+  };
+
   // Renderizar el contenido según el módulo activo
   const renderContent = () => {
     switch (activeModule) {
@@ -393,7 +372,6 @@ export default function Home() {
             />
           </>
         );
-      // ... (resto de los cases para renderContent)
       case "dashboard":
         return (
           <>
@@ -454,16 +432,16 @@ export default function Home() {
     }
   };
 
-  // Función para manejar cambios en el drawer (si la usas para algo más)
-  // const handleDrawerToggle = (open: boolean) => {
-  //   setIsDrawerOpen(open);
-  // };
-
   return (
     <div className="app-container">
-      <Drawer items={menuItems} title="Sistema Admin" logo="🚀" />
+      <Sidebar
+        items={menuItems}
+        title="Sistema Admin"
+        logo="🚀"
+        onToggle={handleSidebarToggle}
+      />
 
-      <main className={`main-content ${isDrawerOpen ? "" : "drawer-closed"}`}>
+      <main className={`main-content ${isSidebarOpen ? "" : "sidebar-closed"}`}>
         <h1 className="text-2xl font-bold mb-6">Sistema de Administración</h1>
 
         <div className="content-container">{renderContent()}</div>
